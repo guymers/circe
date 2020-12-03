@@ -7,6 +7,8 @@ import io.circe.tests.CirceSuite
 import io.circe.tests.examples.glossary
 import java.io.File
 import java.nio.ByteBuffer
+import org.scalacheck.Prop
+
 import scala.io.Source
 
 class JawnParserSuite extends CirceSuite {
@@ -21,13 +23,15 @@ class JawnParserSuite extends CirceSuite {
     )
   )
 
-  "parse and decode(Accumulating)" should "fail on invalid input" in forAll { (s: String) =>
-    assert(parse(s"Not JSON $s").isLeft)
-    assert(decode[Json](s"Not JSON $s").isLeft)
-    assert(decodeAccumulating[Json](s"Not JSON $s").isInvalid)
+  property("parse and decode(Accumulating) should fail on invalid input") {
+    Prop.forAll { (s: String) =>
+      assert(parse(s"Not JSON $s").isLeft)
+      assert(decode[Json](s"Not JSON $s").isLeft)
+      assert(decodeAccumulating[Json](s"Not JSON $s").isInvalid)
+    }
   }
 
-  "parseFile and decodeFile(Accumulating)" should "parse a JSON file" in {
+  test("parseFile and decodeFile(Accumulating) should parse a JSON file") {
     val url = getClass.getResource("/io/circe/tests/examples/glossary.json")
     val file = new File(url.toURI)
 
@@ -36,7 +40,7 @@ class JawnParserSuite extends CirceSuite {
     assert(parseFile(file) === Right(glossary))
   }
 
-  "parseByteBuffer and decodeByteBuffer(Accumulating)" should "parse a byte buffer" in {
+  test("parseByteBuffer and decodeByteBuffer(Accumulating) should parse a byte buffer") {
     val stream = getClass.getResourceAsStream("/io/circe/tests/examples/glossary.json")
     val source = Source.fromInputStream(stream)
     val bytes = source.map(_.toByte).toArray
@@ -47,7 +51,7 @@ class JawnParserSuite extends CirceSuite {
     assert(parseByteBuffer(ByteBuffer.wrap(bytes)) === Right(glossary))
   }
 
-  "parseByteArray and decodeByteArray(Accumulating)" should "parse a byte array" in {
+  test("parseByteArray and decodeByteArray(Accumulating) should parse a byte array") {
     val stream = getClass.getResourceAsStream("/io/circe/tests/examples/glossary.json")
     val source = Source.fromInputStream(stream)
     val bytes = source.map(_.toByte).toArray

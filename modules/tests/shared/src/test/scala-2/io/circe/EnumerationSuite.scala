@@ -8,7 +8,7 @@ import io.circe.tests.CirceSuite
 import org.scalacheck.{ Arbitrary, Gen }
 
 class EnumerationSuite extends CirceSuite {
-  "Decoder[Enumeration]" should "parse Scala Enumerations" in {
+  test("Decoder[Enumeration] should parse Scala Enumerations") {
     object WeekDay extends Enumeration {
       type WeekDay = Value
       val Mon, Tue, Wed, Thu, Fri, Sat, Sun = Value
@@ -19,7 +19,7 @@ class EnumerationSuite extends CirceSuite {
     assert(decoder.apply(friday.hcursor) == Right(WeekDay.Fri))
   }
 
-  "Decoder[Enumeration]" should "fail on unknown values in Scala Enumerations" in {
+  test("Decoder[Enumeration] should fail on unknown values in Scala Enumerations") {
     object WeekDay extends Enumeration {
       type WeekDay = Value
       val Mon, Tue, Wed, Thu, Fri, Sat, Sun = Value
@@ -31,7 +31,7 @@ class EnumerationSuite extends CirceSuite {
     assert(decoder.apply(friday.hcursor).isLeft)
   }
 
-  "Encoder[Enumeration]" should "write Scala Enumerations" in {
+  test("Encoder[Enumeration] should write Scala Enumerations") {
     object WeekDay extends Enumeration {
       type WeekDay = Value
       val Mon, Tue, Wed, Thu, Fri, Sat, Sun = Value

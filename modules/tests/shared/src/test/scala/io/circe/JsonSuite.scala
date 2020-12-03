@@ -1,93 +1,121 @@
 package io.circe
 
-import cats.instances.all._
 import cats.syntax.eq._
 import io.circe.syntax._
 import io.circe.tests.CirceSuite
+import org.scalacheck.Prop
 
 class JsonSuite extends CirceSuite with FloatJsonTests {
-  "foldWith" should "give the same result as fold" in forAll { (json: Json) =>
-    val z: Int = 0
-    val b: Boolean => Int = if (_) 1 else 2
-    val n: JsonNumber => Int = _.toDouble.toInt
-    val s: String => Int = _.length
-    val a: Vector[Json] => Int = _.size
-    val o: JsonObject => Int = _.keys.size
+  property("foldWith should give the same result as fold") {
+    Prop.forAll { (json: Json) =>
+      val z: Int = 0
+      val b: Boolean => Int = if (_) 1 else 2
+      val n: JsonNumber => Int = _.toDouble.toInt
+      val s: String => Int = _.length
+      val a: Vector[Json] => Int = _.size
+      val o: JsonObject => Int = _.keys.size
 
-    val result = json.foldWith(
-      new Json.Folder[Int] {
-        def onNull: Int = z
-        def onBoolean(value: Boolean): Int = b(value)
-        def onNumber(value: JsonNumber): Int = n(value)
-        def onString(value: String): Int = s(value)
-        def onArray(value: Vector[Json]): Int = a(value)
-        def onObject(value: JsonObject): Int = o(value)
-      }
-    )
+      val result = json.foldWith(
+        new Json.Folder[Int] {
+          def onNull: Int = z
+          def onBoolean(value: Boolean): Int = b(value)
+          def onNumber(value: JsonNumber): Int = n(value)
+          def onString(value: String): Int = s(value)
+          def onArray(value: Vector[Json]): Int = a(value)
+          def onObject(value: JsonObject): Int = o(value)
+        }
+      )
 
-    assert(result === json.fold(z, b, n, s, a, o))
-  }
-
-  "asNull" should "give the same result as fold" in forAll { (json: Json) =>
-    assert(json.asNull === json.fold(Some(()), _ => None, _ => None, _ => None, _ => None, _ => None))
-  }
-
-  "asBoolean" should "give the same result as fold" in forAll { (json: Json) =>
-    assert(json.asBoolean === json.fold(None, Some(_), _ => None, _ => None, _ => None, _ => None))
-  }
-
-  "asNumber" should "give the same result as fold" in forAll { (json: Json) =>
-    assert(json.asNumber === json.fold(None, _ => None, Some(_), _ => None, _ => None, _ => None))
-  }
-
-  "asString" should "give the same result as fold" in forAll { (json: Json) =>
-    assert(json.asString === json.fold(None, _ => None, _ => None, Some(_), _ => None, _ => None))
-  }
-
-  "asArray" should "give the same result as fold" in forAll { (json: Json) =>
-    assert(json.asArray === json.fold(None, _ => None, _ => None, _ => None, Some(_), _ => None))
-  }
-
-  "asObject" should "give the same result as fold" in forAll { (json: Json) =>
-    assert(json.asObject === json.fold(None, _ => None, _ => None, _ => None, _ => None, Some(_)))
-  }
-
-  "withNull" should "be identity with Json.Null" in forAll { (json: Json) =>
-    assert(json.withNull(Json.Null) === json)
-  }
-
-  "withBoolean" should "be identity with Json.fromBoolean" in forAll { (json: Json) =>
-    assert(json.withBoolean(Json.fromBoolean) === json)
-  }
-
-  "withNumber" should "be identity with Json.fromJsonNumber" in forAll { (json: Json) =>
-    assert(json.withNumber(Json.fromJsonNumber) === json)
-  }
-
-  "withString" should "be identity with Json.fromString" in forAll { (json: Json) =>
-    assert(json.withString(Json.fromString) === json)
-  }
-
-  "withArray" should "be identity with Json.fromValues" in forAll { (json: Json) =>
-    assert(json.withArray(Json.fromValues) === json)
-  }
-
-  "withObject" should "be identity with Json.fromJsonObject" in forAll { (json: Json) =>
-    assert(json.withObject(Json.fromJsonObject) === json)
-  }
-
-  "deepMerge" should "preserve argument order" in forAll { (js: List[Json]) =>
-    val fields = js.zipWithIndex.map {
-      case (j, i) => i.toString -> j
+      assert(result === json.fold(z, b, n, s, a, o))
     }
-
-    val reversed = Json.fromFields(fields.reverse)
-    val merged = Json.fromFields(fields).deepMerge(reversed)
-
-    assert(merged.asObject.map(_.toList) === Some(fields.reverse))
   }
 
-  "dropEmptyValues" should "remove empty values for JsonObject" in {
+  property("asNull should give the same result as fold") {
+    Prop.forAll { (json: Json) =>
+      assert(json.asNull === json.fold(Some(()), _ => None, _ => None, _ => None, _ => None, _ => None))
+    }
+  }
+
+  property("asBoolean should give the same result as fold") {
+    Prop.forAll { (json: Json) =>
+      assert(json.asBoolean === json.fold(None, Some(_), _ => None, _ => None, _ => None, _ => None))
+    }
+  }
+
+  property("asNumber should give the same result as fold") {
+    Prop.forAll { (json: Json) =>
+      assert(json.asNumber === json.fold(None, _ => None, Some(_), _ => None, _ => None, _ => None))
+    }
+  }
+
+  property("asString should give the same result as fold") {
+    Prop.forAll { (json: Json) =>
+      assert(json.asString === json.fold(None, _ => None, _ => None, Some(_), _ => None, _ => None))
+    }
+  }
+
+  property("asArray should give the same result as fold") {
+    Prop.forAll { (json: Json) =>
+      assert(json.asArray === json.fold(None, _ => None, _ => None, _ => None, Some(_), _ => None))
+    }
+  }
+
+  property("asObject should give the same result as fold") {
+    Prop.forAll { (json: Json) =>
+      assert(json.asObject === json.fold(None, _ => None, _ => None, _ => None, _ => None, Some(_)))
+    }
+  }
+
+  property("withNull should be identity with Json.Null") {
+    Prop.forAll { (json: Json) =>
+      assert(json.withNull(Json.Null) === json)
+    }
+  }
+
+  property("withBoolean should be identity with Json.fromBoolean") {
+    Prop.forAll { (json: Json) =>
+      assert(json.withBoolean(Json.fromBoolean) === json)
+    }
+  }
+
+  property("withNumber should be identity with Json.fromJsonNumber") {
+    Prop.forAll { (json: Json) =>
+      assert(json.withNumber(Json.fromJsonNumber) === json)
+    }
+  }
+
+  property("withString should be identity with Json.fromString") {
+    Prop.forAll { (json: Json) =>
+      assert(json.withString(Json.fromString) === json)
+    }
+  }
+
+  property("withArray should be identity with Json.fromValues") {
+    Prop.forAll { (json: Json) =>
+      assert(json.withArray(Json.fromValues) === json)
+    }
+  }
+
+  property("withObject should be identity with Json.fromJsonObject") {
+    Prop.forAll { (json: Json) =>
+      assert(json.withObject(Json.fromJsonObject) === json)
+    }
+  }
+
+  property("deepMerge should preserve argument order") {
+    Prop.forAll { (js: List[Json]) =>
+      val fields = js.zipWithIndex.map {
+        case (j, i) => i.toString -> j
+      }
+
+      val reversed = Json.fromFields(fields.reverse)
+      val merged = Json.fromFields(fields).deepMerge(reversed)
+
+      assert(merged.asObject.map(_.toList) === Some(fields.reverse))
+    }
+  }
+
+  test("dropEmptyValues should remove empty values for JsonObject") {
     val actual = Json
       .fromFields(
         List(
@@ -111,7 +139,7 @@ class JsonSuite extends CirceSuite with FloatJsonTests {
     )
   }
 
-  "deepDropNullValues" should "remove null value for JsonObject" in {
+  test("deepDropNullValues should remove null value for JsonObject") {
     val actual = Json
       .fromFields(
         List(
@@ -134,13 +162,13 @@ class JsonSuite extends CirceSuite with FloatJsonTests {
     )
   }
 
-  "deepDropNullValues" should "remove null value for JsonArray" in {
+  test("deepDropNullValues should remove null value for JsonArray") {
     val actual = Json.fromValues(List(Json.Null, Json.fromString("a"))).deepDropNullValues
 
     assert(actual == Json.fromValues(List(Json.fromString("a"))))
   }
 
-  "deepDropNullValues" should "remove null value for nested object" in {
+  test("deepDropNullValues should remove null value for nested object") {
     val actual = Json
       .fromFields(
         List(
@@ -164,7 +192,7 @@ class JsonSuite extends CirceSuite with FloatJsonTests {
   val value1 = "fizz"
   val value2 = "foobar"
 
-  """findAllByKey and its alias, \\""" should "return all values matching the given key with key-value pairs at heights 0 and 1." in {
+  test("""findAllByKey and its alias, \\ should return all values matching the given key with key-value pairs at heights 0 and 1.""") {
     val expected = List(Json.fromString(value1), Json.fromString(value2), Json.Null)
     val at0 = (key, Json.fromString(value1))
     val at1 = (key, Json.fromString(value2))
@@ -176,7 +204,7 @@ class JsonSuite extends CirceSuite with FloatJsonTests {
     assert(result === expected && resultAlias === expected)
   }
 
-  """findAllByKey and its alias, \\""" should "return a List of a single, empty object for a Json value with only that (key, value) matching." in {
+  test("""findAllByKey and its alias, \\ should return a List of a single, empty object for a Json value with only that (key, value) matching.""") {
     val expected = List(Json.fromJsonObject(JsonObject.empty))
     val emptyJson = (key, Json.fromJsonObject(JsonObject.empty))
     val json = Json.obj(emptyJson)
@@ -186,7 +214,7 @@ class JsonSuite extends CirceSuite with FloatJsonTests {
     assert(result === expected && resultAlias === expected)
   }
 
-  """findAllByKey and its alias, \\""" should "return an empty List when used on a Json that's not an array or object" in {
+  test("""findAllByKey and its alias, \\ should return an empty List when used on a Json that's not an array or object""") {
     val number = Json.fromLong(42L)
     val string = Json.fromString("foobar")
     val boolean = Json.fromBoolean(true)
@@ -200,7 +228,7 @@ class JsonSuite extends CirceSuite with FloatJsonTests {
 
   val value3 = 42L
 
-  """findAllByKey and its alias, \\""" should "return all values matching the given key with key-value pairs at heights  0, 1, and 2." in {
+  test("""findAllByKey and its alias, \\ should return all values matching the given key with key-value pairs at heights  0, 1, and 2.""") {
     val expected = List(Json.arr(Json.fromString(value1)), Json.fromString(value2), Json.fromLong(value3))
     val `0` = (key, Json.arr(Json.fromString(value1)))
     val `1` = (key, Json.fromString(value2))
@@ -212,84 +240,84 @@ class JsonSuite extends CirceSuite with FloatJsonTests {
     assert(result === expected && resultAlias === expected)
   }
 
-  "fromDouble" should "fail on Double.NaN" in {
+  test("fromDouble should fail on Double.NaN") {
     assert(Json.fromDouble(Double.NaN) === None)
   }
 
-  it should "fail on Double.PositiveInfinity" in {
+  test("fromDouble should fail on Double.PositiveInfinity") {
     assert(Json.fromDouble(Double.PositiveInfinity) === None)
   }
 
-  it should "fail on Double.NegativeInfinity" in {
+  test("fromDouble should fail on Double.NegativeInfinity") {
     assert(Json.fromDouble(Double.NegativeInfinity) === None)
   }
 
-  "fromDoubleOrNull" should "return Null on Double.NaN" in {
+  test("fromDoubleOrNull should return Null on Double.NaN") {
     assert(Json.fromDoubleOrNull(Double.NaN) === Json.Null)
   }
 
-  it should "return Null on Double.PositiveInfinity" in {
+  test("fromDoubleOrNull should return Null on Double.PositiveInfinity") {
     assert(Json.fromDoubleOrNull(Double.PositiveInfinity) === Json.Null)
   }
 
-  it should "return Null on Double.NegativeInfinity" in {
+  test("fromDoubleOrNull should return Null on Double.NegativeInfinity") {
     assert(Json.fromDoubleOrNull(Double.NegativeInfinity) === Json.Null)
   }
 
-  "fromDoubleOrString" should "return String on Double.NaN" in {
+  test("fromDoubleOrString should return String on Double.NaN") {
     assert(Json.fromDoubleOrString(Double.NaN) === Json.fromString("NaN"))
   }
 
-  it should "return String on Double.PositiveInfinity" in {
+  test("fromDoubleOrString should return String on Double.PositiveInfinity") {
     assert(Json.fromDoubleOrString(Double.PositiveInfinity) === Json.fromString("Infinity"))
   }
 
-  it should "return String on Double.NegativeInfinity" in {
+  test("fromDoubleOrString should return String on Double.NegativeInfinity") {
     assert(Json.fromDoubleOrString(Double.NegativeInfinity) === Json.fromString("-Infinity"))
   }
 
-  it should "return JsonNumber Json values for valid Doubles" in {
+  test("fromDoubleOrString should return JsonNumber Json values for valid Doubles") {
     assert(Json.fromDoubleOrString(1.1) === Json.fromJsonNumber(JsonNumber.fromDecimalStringUnsafe("1.1")))
     assert(Json.fromDoubleOrString(-1.2) === Json.fromJsonNumber(JsonNumber.fromDecimalStringUnsafe("-1.2")))
   }
 
-  "fromFloat" should "fail on Float.NaN" in {
+  test("fromFloat should fail on Float.NaN") {
     assert(Json.fromFloat(Float.NaN) === None)
   }
 
-  it should "fail on Float.PositiveInfinity" in {
+  test("fromFloat should fail on Float.PositiveInfinity") {
     assert(Json.fromFloat(Float.PositiveInfinity) === None)
   }
 
-  it should "fail on Float.NegativeInfinity" in {
+  test("fromFloat should fail on Float.NegativeInfinity") {
     assert(Json.fromFloat(Float.NegativeInfinity) === None)
   }
 
-  "fromFloatOrNull" should "return Null on Float.NaN" in {
+  test("fromFloatOrNull should return Null on Float.NaN") {
     assert(Json.fromFloatOrNull(Float.NaN) === Json.Null)
   }
 
-  it should "return Null on Float.PositiveInfinity" in {
+  test("fromFloatOrNull should return Null on Float.PositiveInfinity") {
     assert(Json.fromFloatOrNull(Float.PositiveInfinity) === Json.Null)
   }
 
-  it should "return Null on Float.NegativeInfinity" in {
+  test("fromFloatOrNull should return Null on Float.NegativeInfinity") {
     assert(Json.fromFloatOrNull(Float.NegativeInfinity) === Json.Null)
   }
 
-  "fromFloatOrString" should "return String on Float.NaN" in {
+  test("fromFloatOrString should return String on Float.NaN") {
     assert(Json.fromFloatOrString(Float.NaN) === Json.fromString("NaN"))
   }
 
-  it should "return String on Float.PositiveInfinity" in {
+  test("fromFloatOrString should return String on Float.PositiveInfinity") {
     assert(Json.fromFloatOrString(Float.PositiveInfinity) === Json.fromString("Infinity"))
   }
 
-  it should "return String on Float.NegativeInfinity" in {
+  test("fromFloatOrString should return String on Float.NegativeInfinity") {
     assert(Json.fromFloatOrString(Float.NegativeInfinity) === Json.fromString("-Infinity"))
   }
 
-  "obj" should "create object fluently" in {
+  test("obj should create object fluently") {
     val actual = Json.obj(
       "a" := 1L,
       "b" := "asdf",
@@ -305,12 +333,14 @@ class JsonSuite extends CirceSuite with FloatJsonTests {
     assert(actual === expected)
   }
 
-  "printer shortcuts" should "print the object" in forAll { (json: Json) =>
-    assert(json.noSpaces === Printer.noSpaces.print(json))
-    assert(json.spaces2 === Printer.spaces2.print(json))
-    assert(json.spaces4 === Printer.spaces4.print(json))
-    assert(json.noSpacesSortKeys === Printer.noSpacesSortKeys.print(json))
-    assert(json.spaces2SortKeys === Printer.spaces2SortKeys.print(json))
-    assert(json.spaces4SortKeys === Printer.spaces4SortKeys.print(json))
+  property("printer shortcuts should print the object") {
+    Prop.forAll { (json: Json) =>
+      assert(json.noSpaces === Printer.noSpaces.print(json))
+      assert(json.spaces2 === Printer.spaces2.print(json))
+      assert(json.spaces4 === Printer.spaces4.print(json))
+      assert(json.noSpacesSortKeys === Printer.noSpacesSortKeys.print(json))
+      assert(json.spaces2SortKeys === Printer.spaces2SortKeys.print(json))
+      assert(json.spaces4SortKeys === Printer.spaces4SortKeys.print(json))
+    }
   }
 }

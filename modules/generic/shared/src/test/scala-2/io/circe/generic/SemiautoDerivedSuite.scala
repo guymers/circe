@@ -9,7 +9,7 @@ import io.circe.generic.semiauto._
 import io.circe.testing.CodecTests
 import io.circe.tests.CirceSuite
 import io.circe.tests.examples._
-import org.scalacheck.{ Arbitrary, Gen }
+import org.scalacheck.{ Arbitrary, Gen, Prop }
 import shapeless.Witness, shapeless.labelled.{ FieldType, field }
 import shapeless.test.illTyped
 
@@ -149,26 +149,28 @@ class SemiautoDerivedSuite extends CirceSuite {
     ).codec
   )
 
-  "Decoder[Int => Qux[String]]" should "decode partial JSON representations" in forAll { (i: Int, s: String, j: Int) =>
-    val result = Json
-      .obj(
-        "a" -> Json.fromString(s),
-        "j" -> Json.fromInt(j)
-      )
-      .as[Int => Qux[String]]
-      .map(_(i))
+  property("Decoder[Int => Qux[String]] should decode partial JSON representations") {
+    Prop.forAll { (i: Int, s: String, j: Int) =>
+      val result = Json
+        .obj(
+          "a" -> Json.fromString(s),
+          "j" -> Json.fromInt(j)
+        )
+        .as[Int => Qux[String]]
+        .map(_(i))
 
-    assert(result === Right(Qux(i, s, j)))
+      assert(result === Right(Qux(i, s, j)))
+    }
   }
 
-  it should "return as many errors as invalid elements in a partial case class" in {
+  test("Decoder[Int => Qux[String]] should return as many errors as invalid elements in a partial case class") {
     val decoded = deriveFor[Int => Qux[String]].incomplete.decodeAccumulating(Json.obj().hcursor)
 
     assert(decoded.fold(_.tail.size + 1, _ => 0) === 2)
   }
 
-  "Decoder[FieldType[Witness.`'j`.T, Int] => Qux[String]]" should "decode partial JSON representations" in {
-    forAll { (i: Int, s: String, j: Int) =>
+  property("Decoder[FieldType[Witness.`'j`.T, Int] => Qux[String]] should decode partial JSON representations") {
+    Prop.forAll { (i: Int, s: String, j: Int) =>
       val result = Json
         .obj(
           "i" -> Json.fromInt(i),
@@ -183,8 +185,8 @@ class SemiautoDerivedSuite extends CirceSuite {
     }
   }
 
-  "Decoder[Qux[String] => Qux[String]]" should "decode patch JSON representations" in {
-    forAll { (q: Qux[String], i: Option[Int], a: Option[String], j: Option[Int]) =>
+  property("Decoder[Qux[String] => Qux[String]] should decode patch JSON representations") {
+    Prop.forAll { (q: Qux[String], i: Option[Int], a: Option[String], j: Option[Int]) =>
       val json = Json.obj(
         "i" -> Encoder[Option[Int]].apply(i),
         "a" -> Encoder[Option[String]].apply(a),
@@ -197,13 +199,15 @@ class SemiautoDerivedSuite extends CirceSuite {
     }
   }
 
-  "A generically derived codec" should "not interfere with base instances" in forAll { (is: List[Int]) =>
-    val json = Encoder[List[Int]].apply(is)
+  property("A generically derived codec should not interfere with base instances") {
+    Prop.forAll { (is: List[Int]) =>
+      val json = Encoder[List[Int]].apply(is)
 
-    assert(json === Json.fromValues(is.map(Json.fromInt)) && json.as[List[Int]] === Right(is))
+      assert(json === Json.fromValues(is.map(Json.fromInt)) && json.as[List[Int]] === Right(is))
+    }
   }
 
-  it should "not come from nowhere" in {
+  test("A generically derived codec should not come from nowhere") {
     implicitly[DerivedDecoder[OvergenerationExampleInner]]
     illTyped("Decoder[OvergenerationExampleInner]")
 
@@ -216,17 +220,19 @@ class SemiautoDerivedSuite extends CirceSuite {
     illTyped("Encoder.AsObject[OvergenerationExampleOuter1]")
   }
 
-  it should "require instances for all parts" in {
+  test("A generically derived codec should require instances for all parts") {
     illTyped("deriveDecoder[OvergenerationExampleInner0]")
     illTyped("deriveDecoder[OvergenerationExampleInner1]")
     illTyped("deriveEncoder[OvergenerationExampleInner0]")
     illTyped("deriveEncoder[OvergenerationExampleInner1]")
   }
 
-  "A generically derived codec for an empty case class" should "not accept non-objects" in forAll { (j: Json) =>
-    case class EmptyCc()
+  property("A generically derived codec for an empty case class should not accept non-objects") {
+    Prop.forAll { (j: Json) =>
+      case class EmptyCc()
 
-    assert(deriveDecoder[EmptyCc].decodeJson(j).isRight == j.isObject)
-    assert(deriveCodec[EmptyCc].decodeJson(j).isRight == j.isObject)
+      assert(deriveDecoder[EmptyCc].decodeJson(j).isRight == j.isObject)
+      assert(deriveCodec[EmptyCc].decodeJson(j).isRight == j.isObject)
+    }
   }
 }

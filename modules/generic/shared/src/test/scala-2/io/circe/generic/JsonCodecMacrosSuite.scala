@@ -163,7 +163,7 @@ class JsonCodecMacrosSuite extends CirceSuite {
   checkAll("Codec[RecursiveHierarchy]", CodecTests[RecursiveHierarchy].codec)
   checkAll("Codec[SelfRecursiveWithOption]", CodecTests[SelfRecursiveWithOption].codec)
 
-  "@JsonCodec" should "provide Encoder.AsObject instances" in {
+  test("@JsonCodec should provide Encoder.AsObject instances") {
     Encoder.AsObject[Simple]
     Encoder.AsObject[Single]
     Encoder.AsObject[Typed1[Int]]
@@ -174,7 +174,7 @@ class JsonCodecMacrosSuite extends CirceSuite {
     Encoder.AsObject[SelfRecursiveWithOption]
   }
 
-  it should "only require necessary element instances for generic case classes" in {
+  test("@JsonCodec should only require necessary element instances for generic case classes") {
     @JsonCodec case class GenericCaseClass[A](a: A)
     trait OnlyEncoder
     trait OnlyDecoder
@@ -184,25 +184,25 @@ class JsonCodecMacrosSuite extends CirceSuite {
     Decoder[GenericCaseClass[OnlyDecoder]]
   }
 
-  it should "allow only one, named argument set to true" in {
+  test("@JsonCodec should allow only one, named argument set to true") {
     // Can't supply both
-    assertDoesNotCompile("@JsonCodec(encodeOnly = true, decodeOnly = true) case class X(a: Int)")
+    compileErrors("@JsonCodec(encodeOnly = true, decodeOnly = true) case class X(a: Int)")
     // Must specify the argument name
-    assertDoesNotCompile("@JsonCodec(true) case class X(a: Int)")
+    compileErrors("@JsonCodec(true) case class X(a: Int)")
     // Can't specify false
-    assertDoesNotCompile("@JsonCodec(encodeOnly = false) case class X(a: Int)")
+    compileErrors("@JsonCodec(encodeOnly = false) case class X(a: Int)")
   }
 
-  "@JsonCodec(encodeOnly = true)" should "only provide Encoder instances" in {
+  test("@JsonCodec(encodeOnly = true) should only provide Encoder instances") {
     @JsonCodec(encodeOnly = true) case class CaseClassEncodeOnly(foo: String, bar: Int)
     Encoder[CaseClassEncodeOnly]
     Encoder.AsObject[CaseClassEncodeOnly]
-    assertDoesNotCompile("Decoder[CaseClassEncodeOnly]")
+    compileErrors("Decoder[CaseClassEncodeOnly]")
   }
 
-  "@JsonCodec(decodeOnly = true)" should "provide Decoder instances" in {
+  test("@JsonCodec(decodeOnly = true) should provide Decoder instances") {
     @JsonCodec(decodeOnly = true) case class CaseClassDecodeOnly(foo: String, bar: Int)
     Decoder[CaseClassDecodeOnly]
-    assertDoesNotCompile("Encoder[CaseClassDecodeOnly]")
+    compileErrors("Encoder[CaseClassDecodeOnly]")
   }
 }

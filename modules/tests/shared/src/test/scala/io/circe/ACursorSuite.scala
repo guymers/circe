@@ -1,9 +1,9 @@
 package io.circe
 
-import cats.instances.all._
 import cats.syntax.eq._
 import io.circe.syntax._
 import io.circe.tests.CirceSuite
+import org.scalacheck.Prop
 
 class ACursorSuite extends CirceSuite {
   val j1: Json = Json.obj(
@@ -31,55 +31,69 @@ class ACursorSuite extends CirceSuite {
 
   val cursor: ACursor = HCursor.fromJson(j1)
 
-  "focus" should "return the JSON value in a newly created cursor" in forAll { (j: Json) =>
-    assert(HCursor.fromJson(j).focus === Some(j))
+  property("focus should return the JSON value in a newly created cursor") {
+    Prop.forAll { (j: Json) =>
+      assert(HCursor.fromJson(j).focus === Some(j))
+    }
   }
 
-  "top" should "return from navigation into an object" in forAll { (j: Json) =>
-    val c = HCursor.fromJson(j)
+  property("top should return from navigation into an object") {
+    Prop.forAll { (j: Json) =>
+      val c = HCursor.fromJson(j)
 
-    val intoObject = for {
-      keys <- c.keys
-      first <- keys.headOption
-      atFirst <- c.downField(first).success
-    } yield atFirst
+      val intoObject = for {
+        keys <- c.keys
+        first <- keys.headOption
+        atFirst <- c.downField(first).success
+      } yield atFirst
 
-    assert(intoObject.forall(atFirst => atFirst.top === Some(j)))
+      assert(intoObject.forall(atFirst => atFirst.top === Some(j)))
+    }
   }
 
-  it should "return from navigation into an array" in forAll { (j: Json) =>
-    assert(HCursor.fromJson(j).downArray.success.forall(atFirst => atFirst.top === Some(j)))
+  property("top should return from navigation into an array") {
+    Prop.forAll { (j: Json) =>
+      assert(HCursor.fromJson(j).downArray.success.forall(atFirst => atFirst.top === Some(j)))
+    }
   }
 
-  "up" should "undo navigation into an object" in forAll { (j: Json) =>
-    val c = HCursor.fromJson(j)
+  property("up should undo navigation into an object") {
+    Prop.forAll { (j: Json) =>
+      val c = HCursor.fromJson(j)
 
-    val intoObject = for {
-      keys <- c.keys
-      first <- keys.headOption
-      atFirst <- c.downField(first).success
-    } yield atFirst
+      val intoObject = for {
+        keys <- c.keys
+        first <- keys.headOption
+        atFirst <- c.downField(first).success
+      } yield atFirst
 
-    assert(intoObject.forall(_.up.success.flatMap(_.focus) === Some(j)))
+      assert(intoObject.forall(_.up.success.flatMap(_.focus) === Some(j)))
+    }
   }
 
-  it should "undo navigation into an array" in forAll { (j: Json) =>
-    assert(
-      HCursor.fromJson(j).downArray.success.forall(atFirst => atFirst.up.success.flatMap(_.focus) === Some(j))
-    )
+  property("up should undo navigation into an array") {
+    Prop.forAll { (j: Json) =>
+      assert(
+        HCursor.fromJson(j).downArray.success.forall(atFirst => atFirst.up.success.flatMap(_.focus) === Some(j))
+      )
+    }
   }
 
-  it should "fail at the top" in forAll { (j: Json) =>
-    val result = HCursor.fromJson(j).up
+  property("up should fail at the top") {
+    Prop.forAll { (j: Json) =>
+      val result = HCursor.fromJson(j).up
 
-    assert(result.failed && result.history === List(CursorOp.MoveUp))
+      assert(result.failed && result.history === List(CursorOp.MoveUp))
+    }
   }
 
-  "withFocus" should "have no effect when given the identity function" in forAll { (j: Json) =>
-    assert(HCursor.fromJson(j).withFocus(identity).focus === Some(j))
+  property("withFocus should have no effect when given the identity function") {
+    Prop.forAll { (j: Json) =>
+      assert(HCursor.fromJson(j).withFocus(identity).focus === Some(j))
+    }
   }
 
-  it should "support adding an element to an array" in {
+  test("withFocus should support adding an element to an array") {
     val result = cursor
       .downField("a")
       .success
@@ -90,46 +104,52 @@ class ACursorSuite extends CirceSuite {
     assert(result.flatMap(_.top) === Some(j2))
   }
 
-  "withFocusM" should "lift a value into a List" in forAll { (j: Json) =>
-    assert(HCursor.fromJson(j).withFocusM[List](List(_)).head.focus === Some(j))
+  property("withFocusM should lift a value into a List") {
+    Prop.forAll { (j: Json) =>
+      assert(HCursor.fromJson(j).withFocusM[List](List(_)).head.focus === Some(j))
+    }
   }
 
-  "delete" should "remove a value from an object" in {
+  test("delete should remove a value from an object") {
     val result = cursor.downField("b").success.flatMap(_.delete.success)
 
     assert(result.flatMap(_.top) === Some(j4))
   }
 
-  it should "remove a value from an array" in forAll { (h: Json, t: List[Json]) =>
-    val result = for {
-      f <- HCursor.fromJson(Json.fromValues(h :: t)).downArray.success
-      u <- f.delete.success
-    } yield u
+  property("delete should remove a value from an array") {
+    Prop.forAll { (h: Json, t: List[Json]) =>
+      val result = for {
+        f <- HCursor.fromJson(Json.fromValues(h :: t)).downArray.success
+        u <- f.delete.success
+      } yield u
 
-    assert(result.flatMap(_.focus) === Some(Json.fromValues(t)))
+      assert(result.flatMap(_.focus) === Some(Json.fromValues(t)))
+    }
   }
 
-  it should "fail at the top" in forAll { (j: Json) =>
-    val result = HCursor.fromJson(j).delete
+  property("delete should fail at the top") {
+    Prop.forAll { (j: Json) =>
+      val result = HCursor.fromJson(j).delete
 
-    assert(result.failed && result.history === List(CursorOp.DeleteGoParent))
+      assert(result.failed && result.history === List(CursorOp.DeleteGoParent))
+    }
   }
 
-  "set" should "replace an element" in {
+  test("set should replace an element") {
     val result = cursor.downField("b").success.map(_.set(10.asJson))
 
     assert(result.flatMap(_.top) === Some(j3))
   }
 
-  "values" should "return the expected values" in {
+  test("values should return the expected values") {
     assert(cursor.downField("a").values.map(_.toVector) === Some((1 to 5).toVector.map(_.asJson)))
   }
 
-  "keys" should "return the expected values" in {
+  test("keys should return the expected values") {
     assert(cursor.keys.map(_.toVector) === Some(Vector("a", "b", "c")))
   }
 
-  "left" should "successfully select an existing value" in {
+  test("left should successfully select an existing value") {
     val result = for {
       c <- cursor.downField("a").success
       a <- c.downN(3).success
@@ -139,7 +159,7 @@ class ACursorSuite extends CirceSuite {
     assert(result.flatMap(_.focus) === Some(3.asJson))
   }
 
-  it should "fail to select a value that doesn't exist" in {
+  test("left should fail to select a value that doesn't exist") {
     val result = for {
       c <- cursor.downField("b").success
       l <- c.left.success
@@ -148,13 +168,15 @@ class ACursorSuite extends CirceSuite {
     assert(result.flatMap(_.focus) === None)
   }
 
-  it should "fail at the top" in forAll { (j: Json) =>
-    val result = HCursor.fromJson(j).left
+  property("left should fail at the top") {
+    Prop.forAll { (j: Json) =>
+      val result = HCursor.fromJson(j).left
 
-    assert(result.failed && result.history === List(CursorOp.MoveLeft))
+      assert(result.failed && result.history === List(CursorOp.MoveLeft))
+    }
   }
 
-  "right" should "successfully select an existing value" in {
+  test("right should successfully select an existing value") {
     val result = for {
       c <- cursor.downField("a").success
       a <- c.downN(3).success
@@ -164,7 +186,7 @@ class ACursorSuite extends CirceSuite {
     assert(result.flatMap(_.focus) === Some(5.asJson))
   }
 
-  it should "fail to select a value that doesn't exist" in {
+  test("right should fail to select a value that doesn't exist") {
     val result = for {
       c <- cursor.downField("b").success
       r <- c.right.success
@@ -173,13 +195,15 @@ class ACursorSuite extends CirceSuite {
     assert(result.flatMap(_.focus) === None)
   }
 
-  it should "fail at the top" in forAll { (j: Json) =>
-    val result = HCursor.fromJson(j).right
+  property("right should fail at the top") {
+    Prop.forAll { (j: Json) =>
+      val result = HCursor.fromJson(j).right
 
-    assert(result.failed && result.history === List(CursorOp.MoveRight))
+      assert(result.failed && result.history === List(CursorOp.MoveRight))
+    }
   }
 
-  "first" should "successfully select an existing value" in {
+  test("first should successfully select an existing value") {
     val result = for {
       c <- cursor.downField("a").success
       a <- c.downN(3).success
@@ -189,7 +213,7 @@ class ACursorSuite extends CirceSuite {
     assert(result.flatMap(_.focus) === Some(1.asJson))
   }
 
-  it should "fail to select a value that doesn't exist" in {
+  test("first should fail to select a value that doesn't exist") {
     val result = for {
       c <- cursor.downField("b").success
       f <- c.first.success
@@ -198,13 +222,15 @@ class ACursorSuite extends CirceSuite {
     assert(result.flatMap(_.focus) === None)
   }
 
-  it should "fail at the top" in forAll { (j: Json) =>
-    val result = HCursor.fromJson(j).first
+  property("first should fail at the top") {
+    Prop.forAll { (j: Json) =>
+      val result = HCursor.fromJson(j).first
 
-    assert(result.failed && result.history === List(CursorOp.MoveFirst))
+      assert(result.failed && result.history === List(CursorOp.MoveFirst))
+    }
   }
 
-  "field" should "successfully select an existing value" in {
+  test("field should successfully select an existing value") {
     val result = for {
       c <- cursor.downField("c").success
       e <- c.downField("e").success
@@ -214,27 +240,29 @@ class ACursorSuite extends CirceSuite {
     assert(result.flatMap(_.focus) === Some(200.2.asJson))
   }
 
-  it should "fail at the top" in forAll { (j: Json, key: String) =>
-    val result = HCursor.fromJson(j).field(key)
+  property("field should fail at the top") {
+    Prop.forAll { (j: Json, key: String) =>
+      val result = HCursor.fromJson(j).field(key)
 
-    assert(result.failed && result.history === List(CursorOp.Field(key)))
+      assert(result.failed && result.history === List(CursorOp.Field(key)))
+    }
   }
 
-  "getOrElse" should "successfully decode an existing field" in {
+  test("getOrElse should successfully decode an existing field") {
     val result = for {
       b <- cursor.downField("b").success
     } yield b.getOrElse[List[Boolean]]("d")(Nil)
     assert(result === Some(Right(List(true, false, true))))
   }
 
-  it should "use the fallback if field is missing" in {
+  test("getOrElse should use the fallback if field is missing") {
     val result = for {
       b <- cursor.downField("b").success
     } yield b.getOrElse[List[Boolean]]("z")(Nil)
     assert(result === Some(Right(Nil)))
   }
 
-  it should "fail if the field is the wrong type" in {
+  test("getOrElse should fail if the field is the wrong type") {
     val result = for {
       b <- cursor.downField("b").success
     } yield b.getOrElse[List[Int]]("d")(Nil)

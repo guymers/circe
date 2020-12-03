@@ -1,22 +1,25 @@
 package io.circe.syntax
 
-import cats.kernel.instances.string._
-import cats.kernel.instances.tuple._
 import cats.syntax.eq._
-import io.circe.{ Encoder, Json, KeyEncoder }
+import io.circe.{Encoder, Json, KeyEncoder}
 import io.circe.tests.CirceSuite
+import org.scalacheck.Prop
 
 class SyntaxSuite extends CirceSuite {
-  "asJson" should "be available and work appropriately" in forAll { (s: String) =>
-    assert(s.asJson === Json.fromString(s))
+  property("asJson should be available and work appropriately") {
+    Prop.forAll { (s: String) =>
+      assert(s.asJson === Json.fromString(s))
+    }
   }
 
-  "asJsonObject" should "be available and work appropriately" in forAll { (m: Map[String, Int]) =>
-    assert(m.asJsonObject === Encoder[Map[String, Int]].apply(m).asObject.get)
+  property("asJsonObject should be available and work appropriately") {
+    Prop.forAll { (m: Map[String, Int]) =>
+      assert(m.asJsonObject === Encoder[Map[String, Int]].apply(m).asObject.get)
+    }
   }
 
-  ":=" should "be available and work with String keys" in {
-    forAll { (key: String, m: Map[String, Int], aNumber: Int, aString: String, aBoolean: Boolean) =>
+  property(":= should be available and work with String keys") {
+    Prop.forAll { (key: String, m: Map[String, Int], aNumber: Int, aString: String, aBoolean: Boolean) =>
       assert((key := m) === (key, m.asJson))
       assert((key := aNumber) === (key, aNumber.asJson))
       assert((key := aString) === (key, aString.asJson))
@@ -24,12 +27,12 @@ class SyntaxSuite extends CirceSuite {
     }
   }
 
-  ":=" should "be available and work with non-String keys that have a KeyEncoder instance" in {
+  property(":= should be available and work with non-String keys that have a KeyEncoder instance") {
     case class CustomKey(componentOne: String, componentTwo: Int)
     implicit val keyEncoder: KeyEncoder[CustomKey] =
       KeyEncoder[String].contramap(k => s"${k.componentOne}_${k.componentTwo}")
 
-    forAll {
+    Prop.forAll {
       (
         m: Map[String, Int],
         aNumber: Int,

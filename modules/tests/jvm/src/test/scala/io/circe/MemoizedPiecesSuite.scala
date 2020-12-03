@@ -1,14 +1,12 @@
 package io.circe
 
 import io.circe.tests.CirceSuite
-import org.scalacheck.{ Arbitrary, Gen }
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.{ Millis, Span }
-import scala.concurrent.Future
+import org.scalacheck.{Arbitrary, Gen, Prop}
+import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 
-class MemoizedPiecesSuite extends CirceSuite with ScalaFutures {
-  implicit val defaultPatience: PatienceConfig = PatienceConfig(timeout = Span(1000, Millis))
+class MemoizedPiecesSuite extends CirceSuite {
 
   case class Depths(depths: Seq[Int])
 
@@ -37,13 +35,12 @@ class MemoizedPiecesSuite extends CirceSuite with ScalaFutures {
     tmp
   }
 
-  "Printer.MemoizedPieces" should "should be correct for arbitrarily ordered depths under concurrent usage" in {
-    forAll { (depths: Depths) =>
+  property("Printer.MemoizedPieces should should be correct for arbitrarily ordered depths under concurrent usage") {
+    Prop.forAll { (depths: Depths) =>
       val newPieces = makePieces
 
-      whenReady(Future.traverse(depths.depths)(depth => Future(newPieces(depth)))) { result =>
-        assert(result.sameElements(depths.depths.map(pieces(_))))
-      }
+      val result = Future.traverse(depths.depths)(depth => Future(newPieces(depth)))
+      assert(Await.result(result, 1.second).sameElements(depths.depths.map(pieces(_))))
     }
   }
 }

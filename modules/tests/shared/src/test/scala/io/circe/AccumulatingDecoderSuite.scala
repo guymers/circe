@@ -1,14 +1,13 @@
 package io.circe
 
 import cats.data.NonEmptyList
-import cats.instances.all._
 import cats.laws.discipline.arbitrary._
 import cats.syntax.eq._
 import io.circe.syntax._
 import io.circe.tests.CirceSuite
-import org.scalatest.Inside
+import org.scalacheck.Prop
 
-class AccumulatingDecoderSpec extends CirceSuite with Inside {
+class AccumulatingDecoderSpec extends CirceSuite {
   private case class BadSample(a: Int, b: Boolean, c: Int)
 
   private object BadSample {
@@ -27,8 +26,8 @@ class AccumulatingDecoderSpec extends CirceSuite with Inside {
     }
   }
 
-  "decodeAccumulating" should "return as many errors as invalid elements in a list" in {
-    forAll { (xs: List[Either[Int, String]]) =>
+  property("decodeAccumulating should return as many errors as invalid elements in a list") {
+    Prop.forAll { (xs: List[Either[Int, String]]) =>
       val json = xs.map(_.fold(Json.fromInt, Json.fromString)).asJson
       val decoded = Decoder[List[String]].decodeAccumulating(json.hcursor)
       val intElems = xs.collect { case Left(elem) => elem }
@@ -37,8 +36,8 @@ class AccumulatingDecoderSpec extends CirceSuite with Inside {
     }
   }
 
-  it should "return expected failures in a list" in {
-    forAll { (xs: List[Either[Int, String]]) =>
+  property("decodeAccumulating should return expected failures in a list") {
+    Prop.forAll { (xs: List[Either[Int, String]]) =>
       val cursor = xs.map(_.fold(Json.fromInt, Json.fromString)).asJson.hcursor
       val invalidElems = xs.collect { case Left(e) => Some(e.asJson) }
       val errors = Decoder[List[String]].decodeAccumulating(cursor).fold(_.toList, _ => Nil)
@@ -47,8 +46,8 @@ class AccumulatingDecoderSpec extends CirceSuite with Inside {
     }
   }
 
-  it should "return expected failures in a map" in {
-    forAll { (xs: Map[String, Either[Int, String]]) =>
+  property("decodeAccumulating should return expected failures in a map") {
+    Prop.forAll { (xs: Map[String, Either[Int, String]]) =>
       val cursor = xs.map { case (k, v) => (k, v.fold(Json.fromInt, Json.fromString)) }.asJson.hcursor
       val invalidElems = xs.values.collect { case Left(e) => e.asJson }.toSet
       val errors = Decoder[Map[String, String]].decodeAccumulating(cursor).fold(_.toList, _ => Nil)
@@ -57,8 +56,8 @@ class AccumulatingDecoderSpec extends CirceSuite with Inside {
     }
   }
 
-  it should "return expected failures in a set" in {
-    forAll { (xs: Set[Either[Int, String]]) =>
+  property("decodeAccumulating should return expected failures in a set") {
+    Prop.forAll { (xs: Set[Either[Int, String]]) =>
       val cursor = xs.map(_.fold(Json.fromInt, Json.fromString)).asJson.hcursor
       val invalidElems = xs.collect { case Left(e) => Some(e.asJson): Option[Json] }
       val errors = Decoder[Set[String]].decodeAccumulating(cursor).fold(_.toList, _ => Nil)
@@ -67,8 +66,8 @@ class AccumulatingDecoderSpec extends CirceSuite with Inside {
     }
   }
 
-  it should "return expected failures in a non-empty list" in {
-    forAll { (xs: NonEmptyList[Either[Int, String]]) =>
+  property("decodeAccumulating should return expected failures in a non-empty list") {
+    Prop.forAll { (xs: NonEmptyList[Either[Int, String]]) =>
       val cursor = xs.map(_.fold(Json.fromInt, Json.fromString)).asJson.hcursor
       val invalidElems = xs.toList.collect { case Left(e) => Some(e.asJson) }
       val errors = Decoder[NonEmptyList[String]].decodeAccumulating(cursor).fold(_.toList, _ => Nil)
@@ -77,8 +76,8 @@ class AccumulatingDecoderSpec extends CirceSuite with Inside {
     }
   }
 
-  it should "return expected failures in a tuple" in {
-    forAll { (xs: (Either[Int, String], Either[Int, String], Either[Int, String])) =>
+  property("decodeAccumulating should return expected failures in a tuple") {
+    Prop.forAll { (xs: (Either[Int, String], Either[Int, String], Either[Int, String])) =>
       val cursor = (
         xs._1.fold(Json.fromInt, Json.fromString),
         xs._2.fold(Json.fromInt, Json.fromString),
@@ -95,8 +94,8 @@ class AccumulatingDecoderSpec extends CirceSuite with Inside {
     }
   }
 
-  it should "return expected failures in a case class" in {
-    forAll { (a: Int, b: Boolean, c: Int) =>
+  property("decodeAccumulating should return expected failures in a case class") {
+    Prop.forAll { (a: Int, b: Boolean, c: Int) =>
       val cursor = BadSample(a, b, c).asJson.hcursor
       val invalidElems = List(Some(a.asJson), Some(b.asJson), Some(c.asJson))
       val errors = Decoder[Sample].decodeAccumulating(cursor).fold(_.toList, _ => Nil)
@@ -105,17 +104,15 @@ class AccumulatingDecoderSpec extends CirceSuite with Inside {
     }
   }
 
-  it should "return expected failures combined with validation errors" in {
-    forAll { (a: Int, b: Boolean, c: Int) =>
+  property("decodeAccumulating should return expected failures combined with validation errors") {
+    Prop.forAll { (a: Int, b: Boolean, c: Int) =>
       val cursor = BadSample(a, b, c).asJson.hcursor
       val invalidElems = List(Some(a.asJson), Some(b.asJson), Some(c.asJson))
       val result = Decoder[Sample].validate(_ => List("problem")).decodeAccumulating(cursor)
 
-      inside(result.fold(_.toList, _ => Nil)) {
-        case validationError :: errors =>
-          assert(validationError === DecodingFailure("problem", List.empty))
-          assert(errors.map(df => cursor.replay(df.history).focus) === invalidElems)
-      }
+      val failures = result.fold(_.toList, _ => Nil)
+      assert(failures.headOption === Some(DecodingFailure("problem", List.empty)))
+      assert(failures.drop(1).map(df => cursor.replay(df.history).focus) === invalidElems)
     }
   }
 }

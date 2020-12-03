@@ -469,7 +469,6 @@ lazy val testsBase = circeCrossModule("tests", mima = None)
     scalacOptions in Test += "-language:implicitConversions",
     libraryDependencies ++= Seq(
       "com.chuusai" %%% "shapeless" % shapelessVersion,
-      "org.typelevel" %%% "discipline-scalatest" % disciplineScalaTestVersion,
       "org.typelevel" %%% "discipline-munit" % disciplineMunitVersion
     ).map(_.withDottyCompat(scalaVersion.value)),
     sourceGenerators in Test += (sourceManaged in Test).map(Boilerplate.genTests).taskValue,

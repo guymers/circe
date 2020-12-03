@@ -105,7 +105,6 @@ def circeCrossModule(path: String, mima: Option[String], crossType: CrossType = 
   val id = path.split("-").reduce(_ + _.capitalize)
   CrossProject(id, file(s"modules/$path"))(JVMPlatform, JSPlatform)
     .crossType(crossType)
-    .settings(allSettings)
     .configure(circeProject(path))
     .jvmSettings(
       mimaPreviousArtifacts := mima.map("io.circe" %% moduleName.value % _).toSet
@@ -423,7 +422,7 @@ lazy val scalajsJavaTimeTest = circeModule("scalajs-java-time-test", mima = None
   .settings(noPublishSettings: _*)
   .settings(
     libraryDependencies ++= Seq(
-      "org.scalatest" %%% "scalatest" % scalaTestVersion % Test
+      "org.scalameta" %%% "munit" % munitVersion % Test,
     )
   )
   .dependsOn(coreJS)
